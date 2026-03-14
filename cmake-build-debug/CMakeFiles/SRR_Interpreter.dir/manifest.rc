@@ -1,0 +1,2 @@
+#pragma code_page(65001)
+1 /* CREATEPROCESS_MANIFEST_RESOURCE_ID */ 24 /* RT_MANIFEST */ "D:/Sierra's Storage/Development/SRR-Interpreter/cmake-build-debug/CMakeFiles/SRR_Interpreter.dir/embed.manifest"
