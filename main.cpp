@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <vector>
 
 using std::cout, std::endl, std::string;
 
@@ -13,6 +14,7 @@ enum TokenType {
 
     SEMICOLON,
 
+    UNDEFINED,
     END
 };
 
@@ -21,7 +23,15 @@ public:
     TokenType type;
     string value;
 
+    Token() {}
+
     Token(TokenType type, string value) : type(type), value(value) {
+        //PrintToken();
+    }
+
+    void PrintToken() {
+        if (this->type == END) { cout << "End token\n"; }
+
         cout << "Token type: " << this->type << endl
              << "Token value: " << this->value << endl << endl;
     }
@@ -36,17 +46,22 @@ public:
 
     Lexer(const string &input) : input(input) { this->size = input.size(); }
 
-    Token GetNextToken (int index = 0) {
+    Token GetNextToken () {
 
-        if (index >= input.size()) { position++; return Token(END, ""); }
+        if (position >= input.size()) { position++; return Token(END, ""); }
 
-        char current = input[index];
+        char current = input[position];
 
-        while (index < input.size() && isspace(input[index])) {
+        while (position < input.size() && isspace(input[position])) {
             position++;
-            index++;
+            current = input[position];
+        }
 
-            current = input[index];
+        if (isalpha(current)) {
+            return Token(STRING, GetStringToken(this->input, position));
+        }
+        if (isdigit(current)) {
+            return Token(NUMBER, GetNumberToken(this->input, position));
         }
 
         switch (current) {
@@ -62,13 +77,9 @@ public:
             case ';':
                 position++;
                 return Token(SEMICOLON, ";");
-        }
-
-        if (isalpha(current)) {
-            return Token(STRING, GetStringToken(this->input, index));
-        }
-        if (isdigit(current)) {
-            return Token(NUMBER, GetNumberToken(this->input, index));
+            default:
+                position++;
+                return Token(UNDEFINED, "");
         }
     }
 
@@ -102,16 +113,101 @@ public:
 
     void Tokenize() {
         while (position <= input.size()) {
-            GetNextToken(position);
+            GetNextToken();
         }
     }
 };
 
+class Expression {
+public:
+    virtual ~Expression() = default;
+    virtual int Evaluate() = 0;
+};
+
+class NumberExpression : public Expression {
+public:
+    int value;
+
+    NumberExpression(int value) : value(value) {}
+
+    int Evaluate() override { return value; }
+};
+
+class BinaryExpression : public Expression {
+public:
+    Token _operator;
+
+    Expression *LeftNode;
+    Expression *RightNode;
+
+    BinaryExpression(Expression *LeftNode, Token _operator, Expression *RightNode)
+        : LeftNode(LeftNode), _operator(_operator), RightNode(RightNode) {}
+
+    int Evaluate() override {
+        if (_operator.type == PLUS) {
+            return LeftNode->Evaluate() + RightNode->Evaluate();
+        }
+        if (_operator.type == MINUS) {
+            return LeftNode->Evaluate() - RightNode->Evaluate();
+        }
+    }
+};
+
+class Parser {
+public:
+    Lexer lexer;
+
+    Parser(Lexer lexer) : lexer(lexer) {}
+
+    std::vector<Token> tokens;
+
+    Token current;
+
+    void GetTokenList() {
+        while(lexer.position < lexer.size) {
+            tokens.push_back(lexer.GetNextToken());
+        }
+    }
+
+    void AnalyzeTokenList() {
+
+        NumberExpression *leftNumber = nullptr;
+        NumberExpression *rightNumber = nullptr;
+
+        Token _operator;
+
+        for (int i = 0; i < tokens.size(); i++) {
+            current = tokens[i];
+
+            if (current.type == NUMBER && leftNumber == nullptr) {
+                leftNumber = new NumberExpression(stoi(current.value));
+            }
+
+            if (current.type == PLUS || current.type == MINUS) {
+                _operator = current;
+            }
+
+            if (i != 0 && current.type == NUMBER && leftNumber != nullptr && rightNumber == nullptr) {
+                rightNumber = new NumberExpression(stoi(current.value));
+            }
+        }
+
+        cout << "Left: " << leftNumber->Evaluate() << endl;
+        cout << "Right: " << rightNumber->Evaluate() << endl;
+
+        BinaryExpression *newExpr = new BinaryExpression(leftNumber, _operator, rightNumber);
+        cout << "Result is: " << newExpr->Evaluate();
+    }
+};
+
 int main() {
-    string code = "int a = 15 + 30;";
+    string code = "90 + 25";
 
     Lexer lexer(code);
-    lexer.Tokenize();
+    Parser parser(lexer);
+
+    parser.GetTokenList();
+    parser.AnalyzeTokenList();
 
     return 0;
 }
